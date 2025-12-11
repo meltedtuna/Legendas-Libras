@@ -1,0 +1,51 @@
+name: Publish to Chrome Web Store (CLI)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies (optional)
+        run: npm ci
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        continue-on-error: true
+
+      - name: Zip extension
+        run: |
+          ZIP=extension.zip
+          if [ -d "dist" ]; then
+            zip -r $ZIP dist -x "*.map"
+          else
+            zip -r $ZIP . -x ".git/*" "node_modules/*" "*.map"
+          fi
+          echo "ZIP=$ZIP" >> $GITHUB_ENV
+
+      - name: Install cws-publish CLI
+        run: npm install --no-save cws-publish
+
+      - name: Upload & Publish via CLI
+        env:
+          CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+          CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+          CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+          CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+        run: |
+          # publish publicly
+          npx cws-publish "$CWS_CLIENT_ID" "$CWS_CLIENT_SECRET" "$CWS_REFRESH_TOKEN" "$GITHUB_ENV" "$CWS_EXTENSION_ID" --publish
+          # if you prefer upload-only: use npx cws-upload <client_id> <client_secret> <refresh_token> <zip> <extension_id>
