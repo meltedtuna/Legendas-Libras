@@ -1,0 +1,49 @@
+name: Publish to Chrome Web Store
+
+on:
+  push:
+    tags:
+      - 'v*'        # publish on tag push like v1.2.3
+  workflow_dispatch:   # allow manual run
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node (optional but often needed)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies (if your repo has package.json)
+        run: npm ci
+        continue-on-error: true
+
+      - name: Build (if you have a build step)
+        run: npm run build
+        continue-on-error: true
+
+      - name: Create ZIP package
+        run: |
+          ZIP=extension.zip
+          # If build output is in "dist" or "build", change the source path accordingly
+          if [ -d "dist" ]; then
+            zip -r $ZIP dist -x "*.map"
+          else
+            zip -r $ZIP . -x ".git/*" "node_modules/*" "*.map"
+          fi
+          echo "ZIP=$ZIP" >> $GITHUB_ENV
+
+      - name: Upload & Publish to Chrome Web Store
+        uses: mnao305/[email protected]
+        with:
+          client_id: ${{ secrets.CWS_CLIENT_ID }}
+          client_secret: ${{ secrets.CWS_CLIENT_SECRET }}
+          refresh_token: ${{ secrets.CWS_REFRESH_TOKEN }}
+          extension_id: ${{ secrets.CWS_EXTENSION_ID }}
+          zip: ${{ env.ZIP }}
+          publish: true               # set false if you only want to upload draft
+          publish_target: ${{ secrets.CWS_PUBLISH_TARGET || 'default' }}
