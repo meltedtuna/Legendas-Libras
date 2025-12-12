@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "VLibras for YouTube",
+  "version": "2.1",
+  "description": "Injects the VLibras widget into YouTube.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["widget.html", "images/*"],
+      "matches": ["*://*.youtube.com/*"]
+    }
+  ],
+  "sandbox": {
+    "pages": ["widget.html"]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'",
+    "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://vlibras.gov.br https://www.vlibras.gov.br https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://vlibras.gov.br https://www.vlibras.gov.br https://cdn.jsdelivr.net; font-src 'self' https://vlibras.gov.br https://www.vlibras.gov.br https://cdn.jsdelivr.net; child-src 'self' blob: https://vlibras.gov.br https://www.vlibras.gov.br https://cdn.jsdelivr.net; worker-src 'self' blob: https://vlibras.gov.br https://www.vlibras.gov.br https://cdn.jsdelivr.net; connect-src 'self' https://vlibras.gov.br https://www.vlibras.gov.br https://dicionario2.vlibras.gov.br https://cdn.jsdelivr.net; img-src 'self' data: blob: https://vlibras.gov.br https://www.vlibras.gov.br https://cdn.jsdelivr.net;"
+  }
+}

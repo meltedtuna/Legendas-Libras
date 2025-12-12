@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>VLibras Widget</title>
+  <style>
+    /* Styling for the Caption Box inside the widget */
+    #caption-box {
+        position: absolute;
+        bottom: 50px; /* Position above the VLibras footer */
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
+        background-color: rgba(0, 56, 168, 0.9); /* VLibras Blue */
+        color: white;
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        text-align: center;
+        padding: 8px;
+        border-radius: 8px;
+        z-index: 999999;
+        display: none; /* Hidden by default until text arrives */
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        pointer-events: none; /* Let clicks pass through */
+    }
+  </style>
+  <script>
+    // --- 1. FAKE LOCAL STORAGE (Prevents Crash) ---
+    function createMockStorage() {
+      let _data = {};
+      return {
+        setItem: function(k, v) { _data[k] = String(v); },
+        getItem: function(k) { return _data.hasOwnProperty(k) ? _data[k] : null; },
+        removeItem: function(k) { delete _data[k]; },
+        clear: function() { _data = {}; },
+        key: function(i) { return Object.keys(_data)[i] || null; },
+        get length() { return Object.keys(_data).length; }
+      };
+    }
+    try {
+      Object.defineProperty(window, 'localStorage', { value: createMockStorage() });
+      Object.defineProperty(window, 'sessionStorage', { value: createMockStorage() });
+    } catch (e) { console.warn("Storage patch failed:", e); }
+  </script>
+</head>
+<body style="margin:0; padding:0; background: transparent;">
+  
+  <div id="caption-box">...</div>
+
+  <div vw class="enabled">
+    <div vw-access-button class="active"></div>
+    <div vw-plugin-wrapper>
+      <div class="vw-plugin-top-wrapper"></div>
+    </div>
+  </div>
+
+  <script src="https://www.vlibras.gov.br/app/vlibras-plugin.js"></script>
+  <script>
+    var vlibrasWidget = new window.VLibras.Widget('https://www.vlibras.gov.br/app');
+
+    // --- 2. THE QUEUE SYSTEM ---
+    let animationQueue = [];
+    let isSigning = false;
+    let lastReceivedText = "";
+
+    // --- 3. PROCESS THE QUEUE ---
+    function processQueue() {
+        // If already busy or queue is empty, do nothing
+        if (isSigning || animationQueue.length === 0) return;
+
+        // Lock the system
+        isSigning = true;
+
+        // Get the next text
+        const textToSign = animationQueue.shift();
+        
+        // 1. Update the Blue Box
+        const captionBox = document.getElementById('caption-box');
+        captionBox.innerText = textToSign;
+        captionBox.style.display = 'block';
+
+        console.log("🎬 Playing:", textToSign);
+
+        // 2. Trigger the Avatar
+        try {
+            if (window.plugin && window.plugin.player && window.plugin.player.translate) {
+                window.plugin.player.translate(textToSign);
+            } else if (vlibrasWidget.widgetPlayer && vlibrasWidget.widgetPlayer.translate) {
+                vlibrasWidget.widgetPlayer.translate(textToSign);
+            } else if (window.gameInstance && window.gameInstance.SendMessage) {
+                window.gameInstance.SendMessage('Player', 'Translate', textToSign);
+            }
+        } catch (e) { console.error(e); }
+
+        // 3. Calculate "Wait Time"
+        // We estimate how long the sign will take.
+        // Rule of thumb: 1 second base + 0.5 seconds per word.
+        const wordCount = textToSign.split(" ").length;
+        const estimatedTime = 1500 + (wordCount * 500);
+
+        // 4. Wait, then unlock for the next word
+        setTimeout(() => {
+            isSigning = false;
+            captionBox.style.display = 'none'; // Hide box when done
+            processQueue(); // Check if there is more text waiting
+        }, estimatedTime);
+    }
+
+    // --- 4. LISTENER WITH "SMART DIFF" ---
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.action === 'TRANSLATE_TEXT') {
+        let currentText = event.data.text.trim();
+        
+        // Only process if text actually changed
+        if (currentText !== lastReceivedText) {
+            
+            // Logic: Is this a continuation?
+            if (currentText.startsWith(lastReceivedText)) {
+                // Get only the NEW words
+                let newPart = currentText.substring(lastReceivedText.length).trim();
+                if (newPart.length > 0) {
+                    animationQueue.push(newPart);
+                }
+            } else {
+                // New sentence entirely
+                animationQueue.push(currentText);
+            }
+
+            lastReceivedText = currentText;
+            
+            // Try to start the processor
+            processQueue();
+        }
+      }
+    });
+  </script>
+</body>
+</html>

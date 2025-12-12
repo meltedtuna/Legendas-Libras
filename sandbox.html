@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;">
+  
+  <style>
+    body { 
+      margin: 0; padding: 0; overflow: hidden; background-color: #222; 
+      height: 100vh; display: flex; flex-direction: column;
+    }
+    iframe {
+      flex: 1; width: 100%; border: none; display: block; background: white;
+    }
+  </style>
+</head>
+<body>
+  <iframe id="vlibras-player" 
+          src="https://vlibras.gov.br/app" 
+          allow="autoplay; encrypted-media">
+  </iframe>
+
+  <script>
+    const playerFrame = document.getElementById('vlibras-player');
+
+    window.addEventListener('message', (event) => {
+      // Pass text from panel.js to the iframe
+      if (event.data.type === 'TRANSLATE') {
+        if (playerFrame.contentWindow) {
+            playerFrame.contentWindow.postMessage(event.data.text, "*");
+        }
+      }
+    });
+  </script>
+</body>
+</html>
